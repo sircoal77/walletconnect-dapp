@@ -1,35 +1,82 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+// src/App.jsx
+import React, { useState } from "react";
+import {
+  WagmiConfig,
+  createClient,
+  configureChains,
+  useAccount,
+  useConnect,
+  useDisconnect,
+} from "wagmi";
+import { mainnet, sepolia } from "wagmi/chains";
+import { publicProvider } from "wagmi/providers/public";
+import { InjectedConnector } from "wagmi/connectors/injected";
+import { WalletConnectConnector } from "wagmi/connectors/walletConnect";
 
-function App() {
-  const [count, setCount] = useState(0)
+const chains = [mainnet, sepolia];
+const { provider, webSocketProvider } = configureChains(chains, [publicProvider()]);
+
+const wagmiClient = createClient({
+  autoConnect: true,
+  connectors: [
+    new InjectedConnector({ chains }),
+    new WalletConnectConnector({
+      chains,
+      options: {
+        projectId: "b49de02b26fcb4c1ad6f4fb0dbd9caff", // your real WalletConnect Project ID
+      },
+    }),
+  ],
+  provider,
+  webSocketProvider,
+});
+
+function WalletComponent() {
+  const { address, isConnected } = useAccount();
+  const { connect } = useConnect();
+  const { disconnect } = useDisconnect();
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <div>
+      {isConnected ? (
+        <>
+          <p>Connected: {address}</p>
+          <button onClick={() => disconnect()}>Disconnect</button>
+        </>
+      ) : (
+        <>
+          <button onClick={() => connect({ connector: new InjectedConnector({ chains }) })}>
+            Connect MetaMask
+          </button>
+          <button
+            onClick={() =>
+              connect({
+                connector: new WalletConnectConnector({
+                  chains,
+                  options: { projectId: "b49de02b26fcb4c1ad6f4fb0dbd9caff" },
+                }),
+              })
+            }
+          >
+            Connect WalletConnect
+          </button>
+        </>
+      )}
+    </div>
+  );
 }
 
-export default App
+export default function App() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <WagmiConfig client={wagmiClient}>
+      <div style={{ padding: 20 }}>
+        <h1>✅ WalletConnect DApp - wagmi v1</h1>
+        <WalletComponent />
+        <hr />
+        <button onClick={() => setCount((c) => c + 1)}>Count: {count}</button>
+      </div>
+    </WagmiConfig>
+  );
+}
